@@ -87,3 +87,11 @@ After some research, I switched from Playwright to **Patchright**, a patched ver
 I tested the first 5 domains. Three of them worked perfectly. One, `jcmobilecigars.com`, is no longer active: its name no longer resolves in DNS, so there is no website to analyze. The last one, `yourfamilylines.com`, was blocked by my antivirus as a potentially dangerous site, which can happen when an old domain expires and is bought by someone else. This raised a safety concern: a scraper visits arbitrary, unknown websites with a real browser, so some of them may be malicious. At scale, I would run the browsers in isolated, disposable containers rather than on a personal machine.
 
 To make the browser look more human and harder to detect, I added mouse movements and scrolling with random distances and random pauses between them. To extract more data, I also made the scraper accept cookie banners. Because of GDPR, many websites don't load their analytics and marketing trackers until the visitor accepts cookies, so accepting the banner reveals more technologies.
+
+After running the collector on the whole domain list, I got: **OK: 153, BLOCKED: 3, SITE ERROR: 10, ANTIVIRUS: 16, ERROR: 18**.
+
+153 sites (77%) loaded correctly and can be analyzed. Only 3 were still blocked by anti-bot protection after switching to Patchright. 10 sites exist but are broken on the owner's side, for example an expired SSL certificate or a suspended hosting account. 16 were blocked by my antivirus because the domains are flagged as dangerous, which is common for old domains that expired and were taken over. The remaining 18 failed to load at all, mostly because the domain no longer exists or the site didn't respond in time.
+
+To analyze the sites flagged by the antivirus safely, I would run the browser in an isolated, disposable container instead of on my own machine.
+
+Next, I match the collected signals against the fingerprint database to see how many technologies I can identify.

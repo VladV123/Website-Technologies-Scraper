@@ -1,13 +1,15 @@
 import asyncio
 import json
 import os
-import sys
-
+import random
 from patchright.async_api import async_playwright
+from read_parquet import load_domains
+
 
 SIGNALS_DIR = "signals" 
+COOKIE_TEXTS = ["Accept all", "Accept All", "Allow all", "I agree", "Agree", "Accept", "Acceptă", "OK"]
 
-JS_COLLECT = """
+COLLECTOR = """
 () => {
   const meta = {};
   document.querySelectorAll('meta[name], meta[property]').forEach(m => {
@@ -23,6 +25,31 @@ JS_COLLECT = """
   return { meta, scriptSrc, scripts };
 }
 """
+async def act_like_human(page):
+    for _ in range(random.randint(2, 4)):
+        x = random.randint(100, 1200)
+        y = random.randint(100, 700)
+        await page.mouse.move(x, y, steps=random.randint(10, 25))
+        await page.wait_for_timeout(random.randint(200, 600))
+
+    for _ in range(random.randint(4, 7)):
+        await page.mouse.wheel(0, random.randint(300, 700))
+        await page.wait_for_timeout(random.randint(400, 1200))
+
+    if random.random() < 0.5:
+        await page.mouse.wheel(0, -random.randint(200, 500))
+        await page.wait_for_timeout(random.randint(300, 800))
+
+async def accept_cookies(page):
+    for text in COOKIE_TEXTS:
+        button = page.get_by_role("button", name=text)
+        try:
+            if await button.count() > 0:
+                await button.first.click(timeout=2000)
+                return text
+        except Exception:
+            pass
+    return None
 
 async def collect(browser, domain):
     context = await browser.new_context(no_viewport=True)
@@ -40,17 +67,27 @@ async def collect(browser, domain):
         except Exception:
             pass                              
 
-        await page.mouse.wheel(0, 2000)        
-        await page.wait_for_timeout(4000)
-        
-        data = await page.evaluate(JS_COLLECT)
+        scripts_before = {url for url, kind in network if kind == "script"}
+        consent = await accept_cookies(page)
+        consent_scripts = []
+        if consent:
+            await page.wait_for_timeout(random.randint(1500, 2500))
+            scripts_after = {url for url, kind in network if kind == "script"}
+            consent_scripts = sorted(scripts_after - scripts_before)
+
+        await act_like_human(page)
+        await page.wait_for_timeout(random.randint(1500, 3000))
+        data = await page.evaluate(COLLECTOR)
+        script_urls = set(data["scriptSrc"]) | {url for url, kind in network if kind == "script"}
         signals.update({
             "url":       page.url,
             "status":    resp.status if resp else None,
+            "consent":   consent,
+            "consentScripts": consent_scripts,
             "headers":   resp.headers if resp else {},
             "cookies":   {c["name"]: c["value"] for c in await context.cookies()},
             "meta":      data["meta"],
-            "scriptSrc": data["scriptSrc"],
+            "scriptSrc": sorted(script_urls),
             "scripts":   data["scripts"],
             "network":   [url for url, _ in network],
             "html":      await page.content(),
@@ -69,31 +106,56 @@ def save_signals(signals):
         json.dump(signals, f, indent=2, ensure_ascii=False)
     return path
 
-def print_summary(signals):
-    print(f"{signals['domain']}:")
+def short_result(signals):
     if signals["error"]:
-        print(f"EROARE: {signals['error']}")
-        return
-    print(f"URL:     {signals['url']}  (status {signals['status']})")
-    print(f"Headers: {len(signals['headers'])}")
-    print(f"Cookies: {list(signals['cookies'])}")
-    print(f"Meta:    {list(signals['meta'])}")
-    print(f"Scripts: {len(signals['scriptSrc'])} externe, {len(signals['scripts'])} inline")
-    print(f"Request: {len(signals['network'])}")
-    print(f"HTML:    {len(signals['html'])} caractere")
+        return f"ERROR    {signals['error'][:70]}"
+    if "bitdefender" in signals["html"].lower():
+        return f"ANTIVIRUS status {signals['status']}"
+    status = signals["status"]
+    if status in (401, 403, 429):
+        label = "BLOCKED"
+    elif status and status >= 400:
+        label = "SITE_ERR"
+    else:
+        label = "OK"
+    return f"{label} status {status}, {len(signals['scriptSrc'])} scripts, {len(signals['network'])} requests"
 
-async def start(domain):
+async def start():
+    domains = load_domains()
+    print(f"{len(domains)} domains to collect\n")
+
+    ok = blocked = site_errors = antivirus = errors = 0
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(channel="chrome", headless=False)
-        signals = await collect(browser, domain)
+
+        for i, domain in enumerate(domains, start=1):
+            if os.path.exists(os.path.join(SIGNALS_DIR, f"{domain}.json")):
+                print(f"[{i}/{len(domains)}] {domain} SKIPPED  (already collected)")
+                continue
+
+            signals = await collect(browser, domain)
+            save_signals(signals)
+
+            result = short_result(signals)
+            print(f"[{i}/{len(domains)}] {domain} {result}")
+
+            if result.startswith("OK"):
+                ok += 1
+            elif result.startswith("BLOCKED"):
+                blocked += 1
+            elif result.startswith("SITE_ERR"):
+                site_errors += 1
+            elif result.startswith("ANTIVIRUS"):
+                antivirus += 1
+            else:
+                errors += 1
+
+            await asyncio.sleep(random.uniform(1, 3))
+
         await browser.close()
 
-    print_summary(signals)
-    path = save_signals(signals)
-    print(f"{path}")
+    print(f"\nOK: {ok}   BLOCKED: {blocked}   SITE ERROR: {site_errors}   ANTIVIRUS: {antivirus}   ERROR: {errors}")
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        sys.exit(1)
-    domain = sys.argv[1] 
-    asyncio.run(start(domain))
+    asyncio.run(start())

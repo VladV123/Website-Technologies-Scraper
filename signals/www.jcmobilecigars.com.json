@@ -1,4 +1,0 @@
-{
-  "domain": "www.jcmobilecigars.com",
-  "error": "Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.jcmobilecigars.com/\nCall log:\n  - navigating to \"https://www.jcmobilecigars.com/\", waiting until \"domcontentloaded\"\n"
-}
