@@ -78,4 +78,12 @@ After the analysis i dowloaded the parquet folder with all the domains i made re
   "html": "<html><head><title>Access Denied</title></head><body><h1>Access Denied</h1> ..."
 }
 ```
-The request was **blocked**: the status is `403` and the HTML is an "Access Denied" page. The `server: AkamaiGHost` header and the `AKA_A2` cookie show that the site is protected by Akamai, which detected the automated browser. Because of this, there are no scripts or meta tags to analyze.However, the response still leaks information.
+The request was **blocked**: the status is `403` and the HTML is an "Access Denied" page. The `server: AkamaiGHost` header and the `AKA_A2` cookie show that the site is protected by Akamai, which detected the automated browser. Because of this, there are no scripts or meta tags to analyze.However, the response still leaks information. 
+After some research, I switched from Playwright to **Patchright**, a patched version of Playwright that hides the traces left by browser automation. I also:
+
+- launched the **real Google Chrome** installed on my machine (`channel="chrome"`) instead of the bundled Chromium, in a **visible window** (`headless=False`);
+- removed my hardcoded user agent (`Chrome/124`), which didn't match the real browser version and made the browser look inconsistent.
+
+I tested the first 5 domains. Three of them worked perfectly. One, `jcmobilecigars.com`, is no longer active: its name no longer resolves in DNS, so there is no website to analyze. The last one, `yourfamilylines.com`, was blocked by my antivirus as a potentially dangerous site, which can happen when an old domain expires and is bought by someone else. This raised a safety concern: a scraper visits arbitrary, unknown websites with a real browser, so some of them may be malicious. At scale, I would run the browsers in isolated, disposable containers rather than on a personal machine.
+
+To make the browser look more human and harder to detect, I added mouse movements and scrolling with random distances and random pauses between them. To extract more data, I also made the scraper accept cookie banners. Because of GDPR, many websites don't load their analytics and marketing trackers until the visitor accepts cookies, so accepting the banner reveals more technologies.

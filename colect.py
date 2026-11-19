@@ -3,14 +3,9 @@ import json
 import os
 import sys
 
-from playwright.async_api import async_playwright
+from patchright.async_api import async_playwright
 
 SIGNALS_DIR = "signals" 
-
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-)
 
 JS_COLLECT = """
 () => {
@@ -30,7 +25,7 @@ JS_COLLECT = """
 """
 
 async def collect(browser, domain):
-    context = await browser.new_context(user_agent=USER_AGENT)
+    context = await browser.new_context(no_viewport=True)
     page = await context.new_page()
     network = []
     page.on("request", lambda r: network.append((r.url, r.resource_type)))
@@ -47,7 +42,7 @@ async def collect(browser, domain):
 
         await page.mouse.wheel(0, 2000)        
         await page.wait_for_timeout(4000)
-
+        
         data = await page.evaluate(JS_COLLECT)
         signals.update({
             "url":       page.url,
@@ -89,7 +84,7 @@ def print_summary(signals):
 
 async def start(domain):
     async with async_playwright() as p:
-        browser = await p.chromium.launch()
+        browser = await p.chromium.launch(channel="chrome", headless=False)
         signals = await collect(browser, domain)
         await browser.close()
 
