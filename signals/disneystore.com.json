@@ -1,0 +1,38 @@
+{
+  "domain": "disneystore.com",
+  "error": null,
+  "url": "https://www.disneystore.com/",
+  "status": 403,
+  "headers": {
+    "alt-svc": "h3=\":443\"; ma=93600",
+    "content-length": "373",
+    "content-type": "text/html",
+    "date": "Thu, 19 Nov 2026 03:10:49 GMT",
+    "expires": "Thu, 19 Nov 2026 03:10:49 GMT",
+    "link": "<https://fonts.twdc.com/InspireTWDC/2024.1.0/woff/InspireTWDC-Black.woff2>;rel=\"preload\";as=\"font\";type=\"font/woff2\";crossorigin,<https://fonts.twdc.com/InspireTWDC/2024.1.0/woff/InspireTWDC-Black_Italic.woff2>;rel=\"preload\";as=\"font\";type=\"font/woff2\";crossorigin,<https://fonts.twdc.com/InspireTWDC/2024.1.0/woff/InspireTWDC-Heavy.woff2>;rel=\"preload\";as=\"font\";type=\"font/woff2\";crossorigin,<https://fonts.twdc.com/InspireTWDC/2024.1.0/woff/InspireTWDC-Heavy_Italic.woff2>;rel=\"preload\";as=\"font\";type=\"font/woff2\";crossorigin,<https://fonts.twdc.com/InspireTWDC/2024.1.0/woff/InspireTWDC-Light.woff2>;rel=\"preload\";as=\"font\";type=\"font/woff2\";crossorigin,<https://fonts.twdc.com/InspireTWDC/2024.1.0/woff/InspireTWDC-Light_Italic.woff2>;rel=\"preload\";as=\"font\";type=\"font/woff2\";crossorigin,<https://fonts.twdc.com/InspireTWDC/2024.1.0/woff/InspireTWDC-Medium.woff2>;rel=\"preload\";as=\"font\";type=\"font/woff2\";crossorigin\n<https://cdn.evgnet.com>;rel=\"preconnect\",<https://fonts.twdc.com>;rel=\"preconnect\",<https://cdn.cookielaw.org>;rel=\"preconnect\",<https://cdn.registerdisney.go.com>;rel=\"preconnect\",<https://www.google.com>;rel=\"preconnect\",<https://fast.fonts.net>;rel=\"preconnect\",<https://cdn.cquotient.com>;rel=\"preconnect\",<https://assets.adobedtm.com>;rel=\"preconnect\",<https://www.gstatic.com>;rel=\"preconnect\"",
+    "mime-version": "1.0",
+    "server": "AkamaiGHost",
+    "server-timing": "cdn-cache; desc=HIT\nedge; dur=1\nak_p; desc=\"1795057849925_399784854_2404496466_12_8954_3_0_255\";dur=1",
+    "strict-transport-security": "max-age=31536000 ; includeSubDomains ; preload",
+    "x-disney-akamai-rule": "Set Path Cookie\nWaiting Room"
+  },
+  "cookies": {
+    "wr_entry_path": "/",
+    "AKA_A2": "A"
+  },
+  "meta": {},
+  "scriptSrc": [],
+  "scripts": [],
+  "network": [
+    "https://disneystore.com/",
+    "https://www.disneystore.com/",
+    "https://fonts.twdc.com/InspireTWDC/2024.1.0/woff/InspireTWDC-Black.woff2",
+    "https://fonts.twdc.com/InspireTWDC/2024.1.0/woff/InspireTWDC-Black_Italic.woff2",
+    "https://fonts.twdc.com/InspireTWDC/2024.1.0/woff/InspireTWDC-Heavy.woff2",
+    "https://fonts.twdc.com/InspireTWDC/2024.1.0/woff/InspireTWDC-Heavy_Italic.woff2",
+    "https://fonts.twdc.com/InspireTWDC/2024.1.0/woff/InspireTWDC-Light.woff2",
+    "https://fonts.twdc.com/InspireTWDC/2024.1.0/woff/InspireTWDC-Light_Italic.woff2",
+    "https://fonts.twdc.com/InspireTWDC/2024.1.0/woff/InspireTWDC-Medium.woff2"
+  ],
+  "html": "<html><head>\n<title>Access Denied</title>\n</head><body>\n<h1>Access Denied</h1>\n \nYou don't have permission to access \"http://www.disneystore.com/\" on this server.<p>\nReference #18.963bd417.1795057849.8f51b452\n</p><p>https://errors.edgesuite.net/18.963bd417.1795057849.8f51b452</p>\n\n\n</body></html>"
+}

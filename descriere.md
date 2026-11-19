@@ -50,3 +50,32 @@ The fields fall into three groups:
 
 
 This analysis told me the format needed for my scraper to collect from each website: one for each type of detection rule.
+
+After the analysis i dowloaded the parquet folder with all the domains i made read_paquet.py to read the first 5 and made a collect.py to collect data from the site. I collected the networks, scripts, meta, cookies, headers and all the html. I tried [disney](https://www.disneystore.com/) and got the json bellow that was saved in `signals/disneystore.com.json` 
+
+```json
+{
+  "domain": "disneystore.com",
+  "error": null,
+  "url": "https://www.disneystore.com/",
+  "status": 403,
+  "headers": {
+    "server": "AkamaiGHost",
+    "link": "<https://cdn.evgnet.com>;rel=\"preconnect\",<https://cdn.cookielaw.org>;rel=\"preconnect\",<https://assets.adobedtm.com>;rel=\"preconnect\",<https://cdn.cquotient.com>;rel=\"preconnect\",<https://fast.fonts.net>;rel=\"preconnect\", ...",
+    "x-disney-akamai-rule": "Set Path Cookie\nWaiting Room",
+    ...
+  },
+  "cookies": { "wr_entry_path": "/", "AKA_A2": "A" },
+  "meta": {},
+  "scriptSrc": [],
+  "scripts": [],
+  "network": [
+    "https://disneystore.com/",
+    "https://www.disneystore.com/",
+    "https://fonts.twdc.com/InspireTWDC/2024.1.0/woff/InspireTWDC-Black.woff2",
+    ...
+  ],
+  "html": "<html><head><title>Access Denied</title></head><body><h1>Access Denied</h1> ..."
+}
+```
+The request was **blocked**: the status is `403` and the HTML is an "Access Denied" page. The `server: AkamaiGHost` header and the `AKA_A2` cookie show that the site is protected by Akamai, which detected the automated browser. Because of this, there are no scripts or meta tags to analyze.However, the response still leaks information.
