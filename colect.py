@@ -4,13 +4,31 @@ import os
 import random
 from patchright.async_api import async_playwright
 from read_parquet import load_domains
+from database_analyzer import load_fingerprints
 
 
-SIGNALS_DIR = "signals" 
+SIGNALS_DIR = "signals1" 
 COOKIE_TEXTS = ["Accept all", "Accept All", "Allow all", "I agree", "Agree", "Accept", "Acceptă", "OK"]
 
 COLLECTOR = """
-() => {
+(jsPaths) => {
+  const get = (path) => {
+    let obj = window;
+    for (const part of path.split('.')) {
+      if (obj === null || obj === undefined) return undefined;
+      try { obj = obj[part]; } catch (e) { return undefined; }
+    }
+    return obj;
+  };
+
+  const js = {};
+  for (const path of jsPaths) {
+    const value = get(path);
+    if (value !== undefined && value !== null) {
+      js[path] = (typeof value === 'string' || typeof value === 'number') ? String(value) : true;
+    }
+  }
+
   const meta = {};
   document.querySelectorAll('meta[name], meta[property]').forEach(m => {
     const key = (m.getAttribute('name') || m.getAttribute('property')).toLowerCase();
@@ -22,7 +40,7 @@ COLLECTOR = """
     .filter(s => !s.src)
     .map(s => s.textContent.slice(0, 5000));
 
-  return { meta, scriptSrc, scripts };
+  return { js, meta, scriptSrc, scripts };
 }
 """
 async def act_like_human(page):
@@ -51,7 +69,13 @@ async def accept_cookies(page):
             pass
     return None
 
-async def collect(browser, domain):
+def load_js_paths():
+    paths = set()
+    for rules in load_fingerprints().values():
+        paths.update(rules.get("js", {}).keys())
+    return sorted(paths)
+
+async def collect(browser, domain, js_paths):
     context = await browser.new_context(no_viewport=True)
     page = await context.new_page()
     network = []
@@ -77,7 +101,7 @@ async def collect(browser, domain):
 
         await act_like_human(page)
         await page.wait_for_timeout(random.randint(1500, 3000))
-        data = await page.evaluate(COLLECTOR)
+        data = await page.evaluate(COLLECTOR, js_paths)
         script_urls = set(data["scriptSrc"]) | {url for url, kind in network if kind == "script"}
         signals.update({
             "url":       page.url,
@@ -86,6 +110,7 @@ async def collect(browser, domain):
             "consentScripts": consent_scripts,
             "headers":   resp.headers if resp else {},
             "cookies":   {c["name"]: c["value"] for c in await context.cookies()},
+            "js":        data["js"],
             "meta":      data["meta"],
             "scriptSrc": sorted(script_urls),
             "scripts":   data["scripts"],
@@ -122,6 +147,7 @@ def short_result(signals):
 
 async def start():
     domains = load_domains()
+    js_paths = load_js_paths()
     print(f"{len(domains)} domains to collect\n")
 
     ok = blocked = site_errors = antivirus = errors = 0
@@ -134,7 +160,7 @@ async def start():
                 print(f"[{i}/{len(domains)}] {domain} SKIPPED  (already collected)")
                 continue
 
-            signals = await collect(browser, domain)
+            signals = await collect(browser, domain, js_paths)
             save_signals(signals)
 
             result = short_result(signals)

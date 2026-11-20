@@ -5,7 +5,8 @@ import json
 import os
 import re
 from collections import Counter
-
+from cssselect import GenericTranslator
+from lxml import html as lxml_html
 
 RESULTS_JSON = "results.json"
 
@@ -16,11 +17,39 @@ def as_list(value):
 
 def search(pattern, text):
     regex = pattern.split("\\;")[0]
+    regex = regex.replace("https?//", "https?://")
     try:
         return re.search(regex, text, re.IGNORECASE)
     except re.error:
         return None                    
+def check_dom(tree, dom_rules):
+    if isinstance(dom_rules, str):
+        dom_rules = [dom_rules]
+    if isinstance(dom_rules, list):
+        dom_rules = {selector: {"exists": ""} for selector in dom_rules}
 
+    translator = GenericTranslator()
+    for selector, conditions in dom_rules.items():
+        try:
+            elements = tree.xpath(translator.css_to_xpath(selector))
+        except Exception:
+            continue                                  
+        if not elements:
+            continue
+
+
+        if "exists" in conditions:
+            return f"dom: {selector}"
+
+        for element in elements[:200]:
+            for attribute, pattern in conditions.get("attributes", {}).items():
+                value = element.get(attribute)
+                if value is not None and search(pattern, value):
+                    return f"dom: {selector} [{attribute}={value[:80]}]"
+            if "text" in conditions and search(conditions["text"], element.text_content()[:2000]):
+                return f"dom: {selector} (text)"
+
+    return None
 
 def match_site(signals, fingerprints):
     headers = {k.lower(): v for k, v in signals.get("headers", {}).items()}
@@ -29,16 +58,29 @@ def match_site(signals, fingerprints):
     html = signals.get("html", "")
     script_urls = signals.get("scriptSrc", [])
     network_urls = signals.get("network", [])
+    link_urls = re.findall(r"<([^>]+)>", headers.get("link", ""))
+    final_url = signals.get("url", "")
     inline_scripts = signals.get("scripts", [])
+    js_values = signals.get("js", {})
+
+    try:
+        tree = lxml_html.fromstring(html) if html.strip() else None
+    except Exception:
+        tree = None
 
     found = {}
 
     for tech, rules in fingerprints.items():
         evidence = []
         for pattern in as_list(rules.get("scriptSrc", [])):
-            for url in script_urls + network_urls:
-                if search(pattern, url):
-                    source = "scriptSrc" if url in script_urls else "network"
+            for url in script_urls + network_urls + link_urls:
+               if search(pattern, url):
+                    if url in script_urls:
+                        source = "scriptSrc"
+                    elif url in network_urls:
+                        source = "network"
+                    else:
+                        source = "link header"
                     evidence.append(f"{source}: {url[:150]}")
                     break
         for pattern in as_list(rules.get("xhr", [])):
@@ -46,8 +88,15 @@ def match_site(signals, fingerprints):
                 if search(pattern, url):
                     evidence.append(f"xhr: {url[:150]}")
                     break
+        for pattern in as_list(rules.get("url", [])):
+            if search(pattern, final_url):
+                evidence.append(f"url: {final_url[:150]}")
+                break
         for key, site_values in [("headers", headers), ("cookies", cookies), ("meta", meta)]:
             for name, pattern in rules.get(key, {}).items():
+                if name.endswith("*"):
+                    prefix = name[:-1].lower()
+                    name = next((n for n in site_values if n.startswith(prefix)), name)
                 value = site_values.get(name.lower())
                 if value is None:
                     continue
@@ -67,8 +116,18 @@ def match_site(signals, fingerprints):
                     evidence.append(f"scripts: ...{m.group(0)[:80]}...")
                     break
 
+        for variable, pattern in rules.get("js", {}).items():
+            if variable in js_values:
+                value = str(js_values[variable])
+                if search(pattern, value):
+                    evidence.append(f"js: window.{variable} = {value[:60]}")
+        if tree is not None and "dom" in rules:
+            dom_evidence = check_dom(tree, rules["dom"])
+            if dom_evidence:
+                evidence.append(dom_evidence)
+
         if evidence:
-            found[tech] = evidence
+            found[tech] = list(dict.fromkeys(evidence))
 
     return found
 
